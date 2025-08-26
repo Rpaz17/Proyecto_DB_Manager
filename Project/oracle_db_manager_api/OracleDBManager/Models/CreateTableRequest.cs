@@ -13,7 +13,7 @@ public class ColumnDefinition
 {
     public string Name { get; set; } = default!;
     public string DataType { get; set; } = default!;
-    public int? Lenght { get; set; }
+    public int? Length { get; set; }
     public bool Nullable { get; set; } = true;
     public bool IsPrimaryKey { get; set; } = false;
 }

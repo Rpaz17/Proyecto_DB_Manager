@@ -1,5 +1,6 @@
 using System.Data;
 using Oracle.ManagedDataAccess.Client;
+using System.Data.Common;
 using OracleDBManager.Models;
 
 namespace OracleDBManager.Services;
@@ -16,7 +17,7 @@ public class OracleService
         return new OracleConnection(ConnectionString);
     }
 
-    public async asyncTask<QueryResult> ExecuteSqlAsync(string ConnectionString, string sql)
+    public async Task<QueryResult> ExecuteSqlAsync(string ConnectionString, string sql, int? MaxRows = 500) //cambio aqui
     {
         using var conn = NewConn(ConnectionString);
         await conn.OpenAsync();
@@ -26,8 +27,9 @@ public class OracleService
         try
         {
             using var reader = await cmd.ExecuteReaderAsync();
-            var result = reader.GetColumnSchema();
-            result.Columns = schema.Select(c => c.ColumnName ?? "COL").ToList();
+            var result = new QueryResult();
+            var schema = reader.GetColumnSchema(); //cambio aqui
+            result.Columns = schema.Select(c => c.ColumnName ?? "COL").ToList(); //cambio aqui
 
             int count = 0;
             while (await reader.ReadAsync())
@@ -40,14 +42,14 @@ public class OracleService
                 }
                 result.Rows.Add(row);
                 count++;
-                if (MaxRows.HasValue && count >= MaxRows.Value) break;
+                if (MaxRows.HasValue && count >= MaxRows.Value) break; //cambio aqui
             }
             return result;
         }
         catch (OracleException ex) when (ex.Number == 942 || ex.Number == 6550) //tabla o vista no existente o problema de conexion
         {
             var rows = await cmd.ExecuteNonQueryAsync();
-            return new QueryResult { rowsAffected = rows, Message = "Statement executed" };
+            return new QueryResult { RowsAffected = rows, Message = "Statement executed" };
         }
     }
 
@@ -59,7 +61,7 @@ public class OracleService
         cmd.CommandText = "SELECT USERNAME FROM ALL_USERS ORDER BY USERNAME";
         var list = new List<string>();
         using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsyn())
+        while (await reader.ReadAsync()) //cambio aqui
         {
             list.Add(reader.GetString(0));
         }
@@ -79,7 +81,7 @@ public class OracleService
             using var cmd = conn.CreateCommand();
             cmd.CommandText = sql;
             var list = new List<string>();
-            using var reader = await cmd.ExcecuteReaderAsync();
+            using var reader = await cmd.ExecuteReaderAsync(); //cambio aqui
             while (await reader.ReadAsync()) list.Add(reader.GetString(0));
             return list;
         }
