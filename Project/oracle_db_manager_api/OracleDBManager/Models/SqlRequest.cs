@@ -1,3 +1,3 @@
-namespace OracleDBManger.Models;
+namespace OracleDBManager.Models;
 
-public class SqlRequest(string ConnectionString, string Sql, int? MaxRows = 500);
+public record SqlRequest(string ConnectionString, string Sql, int? MaxRows = 500);

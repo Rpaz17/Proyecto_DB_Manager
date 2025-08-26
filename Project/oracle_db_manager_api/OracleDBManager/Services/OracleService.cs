@@ -125,5 +125,14 @@ public class OracleService
         using var cmd = conn.CreateCommand();
         cmd.CommandText = $"CREATE OR REPLACE VIEW {Quote(req.ViewName)}.{Quote(req.ViewName)} AS {req.SelectSql}";
     }
+
+    public async Task CreateProcedureAsync(CreateProcedureRequest req)
+    {
+        using var conn = NewConn(req.ConnectionString);
+        await conn.OpenAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = req.Source;
+        await cmd.ExecuteNonQueryAsync();
+    }
     private static string Quote(string ident) => $"\"{ident.Replace("\"", "\"\"")}\"";
 }

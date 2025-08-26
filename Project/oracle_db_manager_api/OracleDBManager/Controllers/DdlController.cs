@@ -19,20 +19,19 @@ public class DdlController : ControllerBase
     }
 
     [HttpPost("create-view")]
-    public async Task<IActionResult> CreateView([FromBody] SqlRequest req)
+    public async Task<IActionResult> CreateView([FromBody] CreateViewRequest req)
     {
         await _oracle.CreateViewAsync(req);
         return Ok(new { Message = "View created" });
     }
 
 
-    [HttpPost("create-prcedure")]
-    public async Task<IActionResult> CreateProcedure([FromBody] SqlRequest req)
+    [HttpPost("create-procedure")]
+    public async Task<IActionResult> CreateProcedure([FromBody] CreateProcedureRequest req)
     {
         await _oracle.CreateProcedureAsync(req);
         return Ok(new { message = "Procedure created." });
     }
 }
-
 
 
