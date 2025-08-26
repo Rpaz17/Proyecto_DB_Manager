@@ -1,0 +1,6 @@
+C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_api\OracleDBManager\obj\Debug\net9.0\OracleDBManager.csproj.AssemblyReference.cache
+C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_api\OracleDBManager\obj\Debug\net9.0\OracleDBManager.GeneratedMSBuildEditorConfig.editorconfig
+C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_api\OracleDBManager\obj\Debug\net9.0\OracleDBManager.AssemblyInfoInputs.cache
+C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_api\OracleDBManager\obj\Debug\net9.0\OracleDBManager.AssemblyInfo.cs
+C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_api\OracleDBManager\obj\Debug\net9.0\OracleDBManager.csproj.CoreCompileInputs.cache
+C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_api\OracleDBManager\obj\Debug\net9.0\OracleDBManager.sourcelink.json

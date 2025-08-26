@@ -109,6 +109,19 @@ public class OracleService
             string nullable = c.Nullable ? " " : "NOT NULL";
             return $"{Quote(c.Name)} {type}{nullable}";
         }));
+
+        var pkCols = req.Columns.Where(c => c.IsPrimaryKey).Select(c => Quote(c.Name)).ToList();
+        string pkSql = pkCols.Any() ? $", CONSTRAINT {Quote(req.PrimaryKeyName ?? $"{req.TableName}_PK")} PRIMARY KEY ({string.Join(", ", pkCols)})" : "";
+        cmd.CommandText = $"CREATE TABLE {Quote(req.TableName)} ({cols}{pkSql})";
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task CreateViewAsync(CreateViewRequest req)
+    {
+        using var conn = NewConn(req.ConnectionString);
+        await conn.OpenAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"CREATE OR REPLACE VIEW {Quote(req.ViewName)}.{Quote(req.ViewName)} AS {req.SelectSql}";
     }
     private static string Quote(string ident) => $"\"{ident.Replace("\"", "\"\"")}\"";
 }
