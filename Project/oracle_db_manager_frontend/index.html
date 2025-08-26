@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle DB Manager</title>
+    
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-screen bg-gray-50 text-gray-900">
+  <div class="h-full grid grid-cols-[320px_1fr] grid-rows-[56px_1fr]">
+    <!-- Barra de arriba -->
+    <header class="col-span-2 flex items-center justify-between px-4 bg-indigo-600 text-white">
+      <h1 class="font-semibold">Oracle DB Manager</h1>
+      <div class="flex items-center gap-2">
+        <button id="btnConnSettings" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20">Connection</button>
+        <button id="btnDDL" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20">Create</button>
+      </div>
+    </header>
+
+    <!-- Left: metadata tree -->
+    <aside class="overflow-auto border-r bg-white">
+      <div class="p-3 text-sm" id="tree">Set connection and click on “Load metadata”.</div>
+      <div class="p-3 border-t">
+        <button id="btnLoadTree" class="w-full px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700">Load metadata</button>
+      </div>
+    </aside>
+
+    <!-- Main: SQL editor + results -->
+    <main class="p-3 flex flex-col gap-2">
+      <textarea id="sql" class="w-full min-h-[160px] p-3 border rounded font-mono" placeholder="Type SQL here...">SELECT * FROM dual</textarea>
+      <div class="flex gap-2">
+        <button id="btnRun" class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700">Run</button>
+        <button id="btnClear" class="px-3 py-1 rounded border hover:bg-gray-50">Clear</button>
+      </div>
+      <div id="message" class="text-sm text-gray-600"></div>
+      <div id="resultWrap" class="overflow-auto border rounded"></div>
+    </main>
+  </div>
+
+  <!-- Connection Modal -->
+  <div id="connModal" class="fixed inset-0 bg-black/30 hidden items-center justify-center">
+    <div class="bg-white w-[520px] rounded shadow p-4">
+      <h2 class="text-lg font-semibold mb-3">Connection</h2>
+      <div class="grid gap-3">
+        <div><label class="text-sm">Host</label><input id="host" class="w-full border rounded p-2" value="localhost"/></div>
+        <div class="grid grid-cols-3 gap-3">
+          <div><label class="text-sm">Port</label><input id="port" type="number" class="w-full border rounded p-2" value="1521"/></div>
+          <div class="col-span-2"><label class="text-sm">Service</label><input id="service" class="w-full border rounded p-2" value="FREEPDB1"/></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="text-sm">User</label><input id="user" class="w-full border rounded p-2"/></div>
+          <div><label class="text-sm">Password</label><input id="password" type="password" class="w-full border rounded p-2"/></div>
+        </div>
+        <div id="connError" class="text-red-600 text-sm"></div>
+        <div class="flex justify-end gap-2">
+          <button data-close="#connModal" class="px-3 py-1 rounded border">Close</button>
+          <button id="btnSaveConn" class="px-3 py-1 rounded bg-indigo-600 text-white">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÚNICO MODAL DDL -->
+  <div id="ddlModal" class="fixed inset-0 bg-black/30 hidden items-center justify-center">
+    <div class="bg-white w-[900px] rounded shadow p-4">
+      <h2 class="text-lg font-semibold mb-3">Create (Table / View / Procedure-Function)</h2>
+
+      <!-- Selector de tipo -->
+      <div class="grid grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="text-sm">Type</label>
+          <select id="ddlType" class="w-full border rounded p-2">
+            <option value="table">Table</option>
+            <option value="view">View</option>
+            <option value="routine">Procedure/Function</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm">Schema</label>
+          <input id="ddlSchema" class="w-full border rounded p-2" value="APP_USER"/>
+        </div>
+        <div>
+          <label class="text-sm">Name</label>
+          <input id="ddlName" class="w-full border rounded p-2" placeholder="TABLE / VIEW / PROC-FUNC name"/>
+        </div>
+      </div>
+
+      <!-- Sección TABLE -->
+      <div id="ddlTableSection" class="grid gap-3">
+        <div class="flex items-center justify-between">
+          <span class="font-medium">Columns</span>
+          <button id="btnAddCol" class="px-2 py-1 rounded border">Add column</button>
+        </div>
+        <div id="ddlCols" class="grid gap-2"></div>
+        <div>
+          <label class="text-sm">Primary Key Name (optional)</label>
+          <input id="ddlPkName" class="w-full border rounded p-2" placeholder="MY_TABLE_PK"/>
+        </div>
+      </div>
+
+      <!-- Sección VIEW -->
+      <div id="ddlViewSection" class="grid gap-3 hidden">
+        <div>
+          <label class="text-sm">SELECT statement</label>
+          <textarea id="ddlSelect" class="w-full min-h-[140px] border rounded p-2 font-mono" placeholder="SELECT ... FROM ...">SELECT * FROM DUAL</textarea>
+        </div>
+      </div>
+
+      <!-- Sección ROUTINE -->
+      <div id="ddlRoutineSection" class="grid gap-3 hidden">
+        <div>
+          <label class="text-sm">PL/SQL Source</label>
+          <textarea id="ddlSource" class="w-full min-h-[220px] border rounded p-2 font-mono" placeholder='CREATE OR REPLACE PROCEDURE "SCHEMA"."NAME" AS ... END;'></textarea>
+        </div>
+      </div>
+
+      <div class="mt-4 flex justify-end gap-2">
+        <button data-close="#ddlModal" class="px-3 py-1 rounded border">Cancel</button>
+        <button id="btnDDLCreate" class="px-3 py-1 rounded bg-indigo-600 text-white">Create</button>
+      </div>
+    </div>
+  </div>
+    <script src="app.js"></script>
+</body>
+
+</html>
