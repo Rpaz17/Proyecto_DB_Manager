@@ -279,7 +279,7 @@ async function createView(schema, view, selectSql){
     }
     const connStr = getConnString();
 
-    const res = await fetch(`${API_BASE}/api/Ddl/create-table`, {
+    const res = await fetch(`${API_BASE}/api/Ddl/create-view`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -296,6 +296,35 @@ async function createView(schema, view, selectSql){
     renderResult(data);
     msg(res.ok ? 'Executed' : 'Error executing SQL.');
     closeModal('#ddlModal');
+    msg('View created successfully');
+}
+
+async function createProcedure(schema, procedure, source)
+{
+    if(!CONN?.host){
+        msg('Please establish a connection first.');
+        return;
+    }
+    const connStr = getConnString();
+
+    const res = await fetch(`${API_BASE}/api/Ddl/create-procedure`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            connectionString: `${connStr}`,
+            schema: `${schema}`,
+            procedureName: `${view}`,
+            source: `${source}`
+        })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    renderResult(data);
+    msg(res.ok ? 'Executed' : 'Error executing SQL.');
+    closeModal('#ddlModal');
+    msg('Procedure created successfully');
 }
 
 });
