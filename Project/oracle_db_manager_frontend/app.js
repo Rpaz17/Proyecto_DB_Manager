@@ -215,6 +215,8 @@ on('#btnDDLCreate', 'click', async () => {
             nullable: row.querySelector('[data-role="nullable"]').checked,
             isPrimaryKey: row.querySelector('[data-role="isPrimaryKey"]').checked
         }));
+
+        await createTable(schema, table, pkName, cols);
     }
 });
 
@@ -225,17 +227,31 @@ async function createTable(schema, table, pkName, cols){
     }
     const connStr = getConnString();
 
-    const sql = qs('#sql').value;
     const res = await fetch(`${API_BASE}/api/Ddl/create-table`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({connectionString: `${connStr}`, sql, maxRows: 100})
+        body: JSON.stringify({
+            connectionString: `${connStr}`, 
+            schema: `${schema}`, 
+            tableName: `${table}`,
+            columns: cols.map(col => ({
+                name: `${col.name}`,
+                dataType: `${col.datatype}`,
+                length: col.length,
+                nullable: col.nullable,
+                isPrimaryKey: col.isPrimaryKey
+            })),
+            primaryKeyName: `${pkName}`
+        })
     });
     const data = await res.json().catch(() => ({}));
     renderResult(data);
     msg(res.ok ? 'Executed' : 'Error executing SQL.');
+
+    closeModal('#ddlModal');
+    msg('Table created successfully. Load the Trees or execute a query.');
 }
 
 

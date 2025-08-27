@@ -130,13 +130,13 @@ public class OracleService
         {
             string type = c.DataType.ToUpperInvariant();
             if (c.Length.HasValue && type.Contains("CHAR")) type += $"({c.Length.Value})";
-            string nullable = c.Nullable ? " " : "NOT NULL";
+            string nullable = c.Nullable ? " " : " NOT NULL";
             return $"{Quote(c.Name)} {type}{nullable}";
         }));
 
         var pkCols = req.Columns.Where(c => c.IsPrimaryKey).Select(c => Quote(c.Name)).ToList();
         string pkSql = pkCols.Any() ? $", CONSTRAINT {Quote(req.PrimaryKeyName ?? $"{req.TableName}_PK")} PRIMARY KEY ({string.Join(", ", pkCols)})" : "";
-        cmd.CommandText = $"CREATE TABLE {Quote(req.TableName)} ({cols}{pkSql})";
+        cmd.CommandText = $"CREATE TABLE {req.TableName} ({cols}{pkSql})";
         await cmd.ExecuteNonQueryAsync();
     }
 
