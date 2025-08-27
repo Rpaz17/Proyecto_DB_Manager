@@ -218,6 +218,24 @@ on('#btnDDLCreate', 'click', async () => {
 
         await createTable(schema, table, pkName, cols);
     }
+
+    if (type === "view" || type === "VIEW")
+    {
+        const schema = qs('#ddlSchema').value.trim();
+        const view = qs('#ddlName').value.trim();
+        const selectSql = qs('#ddlSelect').value;
+
+        await createView(schema, view, selectSql);
+    }
+
+    if(type === "procedure" || type === "PROCEDURE")
+    {
+        const schema = qs('#ddlSchema').value.trim();
+        const procedure = qs('#ddlName').value.trim();
+        const source = qs('#ddlSource').value;
+
+        await createProcedure(schema, procedure, source);
+    }
 });
 
 async function createTable(schema, table, pkName, cols){
@@ -254,5 +272,30 @@ async function createTable(schema, table, pkName, cols){
     msg('Table created successfully. Load the Trees or execute a query.');
 }
 
+async function createView(schema, view, selectSql){
+    if(!CONN?.host){
+        msg('Please establish a connection first.');
+        return;
+    }
+    const connStr = getConnString();
+
+    const res = await fetch(`${API_BASE}/api/Ddl/create-table`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            connectionString: `${connStr}`,
+            schema: `${schema}`,
+            viewName: `${view}`,
+            selectSql: `${selectSql}`
+        })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    renderResult(data);
+    msg(res.ok ? 'Executed' : 'Error executing SQL.');
+    closeModal('#ddlModal');
+}
 
 });

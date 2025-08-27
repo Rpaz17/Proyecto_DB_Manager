@@ -146,6 +146,7 @@ public class OracleService
         await conn.OpenAsync();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = $"CREATE OR REPLACE VIEW {Quote(req.Schema)}.{Quote(req.ViewName)} AS {req.SelectSql}";
+        await cmd.ExecuteNonQueryAsync();
     }
 
     public async Task CreateProcedureAsync(CreateProcedureRequest req)
