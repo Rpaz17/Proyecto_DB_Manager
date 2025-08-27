@@ -1,17 +1,29 @@
-const API_BASE = "http://localhost:5500";
+const API_BASE = "http://localhost:5242";
 
 //Save Connection
 let CONN = loadConnection();
+let connStr = '';
 
 function loadConnection(){
-    try{ return JSON.parse(localStorage.getItem('odbm.conn') || '{}');      
-    } catch { return{}; }
+    try{ return JSON.parse(localStorage.getItem('odbm.conn') || '{}');  
+    } catch { return ''; }
 }
 
 function saveConnection(c){
     CONN = c;
     localStorage.setItem('odbm.conn', JSON.stringify(c));
 }
+
+function getConnString(){
+    if(!CONN?.host) return '';
+
+    if(CONN?.user=='sys') {
+        return `User Id=${CONN.user};Password=${CONN.password};Data Source=//${CONN.host}:${CONN.port}/${CONN.service};DBA Privilege=SYSDBA;`;
+    }else {
+        return `User Id=${CONN.user};Password=${CONN.password};Data Source=//${CONN.host}:${CONN.port}/${CONN.service};`;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 //Helpers
 const qs = (s, el=document) => el.querySelector(s);
@@ -70,11 +82,13 @@ async function loadTree(){
         msg('Please establish a connection first.');
         return;
     }
+    connStr = getConnString();
+
     qs('#tree').textContent = 'Loading...';
-    const res = await fetch(`${API_BASE}/api/Metadata/Tree`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({conn:CONN})
+    const res = await fetch(`${API_BASE}/api/MetaData/Tree`, {
+        method: 'GET',
+        accept: '*/*',
+        headers: {'ConnectionString': `${connStr}`},
     });
     if (!res.ok){
         qs('#tree').textContent = 'Error loading tree.';
@@ -116,11 +130,15 @@ async function executeSql(){
         msg('Please establish a connection first.');
         return;
     }
+    const connStr = getConnString();
+
     const sql = qs('#sql').value;
-    const res = await fetch(`${API_BASE}/api/Sql/Execute`, {
+    const res = await fetch(`${API_BASE}/api/Sql/execute`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({conn:CONN, sql, maxRows: 500})
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({connectionString: `${connStr}`, sql, maxRows: 100})
     });
     const data = await res.json().catch(() => ({}));
     renderResult(data);
@@ -199,5 +217,26 @@ on('#btnDDLCreate', 'click', async () => {
         }));
     }
 });
+
+async function createTable(schema, table, pkName, cols){
+    if(!CONN?.host){
+        msg('Please establish a connection first.');
+        return;
+    }
+    const connStr = getConnString();
+
+    const sql = qs('#sql').value;
+    const res = await fetch(`${API_BASE}/api/Ddl/create-table`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({connectionString: `${connStr}`, sql, maxRows: 100})
+    });
+    const data = await res.json().catch(() => ({}));
+    renderResult(data);
+    msg(res.ok ? 'Executed' : 'Error executing SQL.');
+}
+
 
 });
