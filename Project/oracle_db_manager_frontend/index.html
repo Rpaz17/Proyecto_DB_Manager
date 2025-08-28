@@ -21,10 +21,16 @@
 
     <!-- Left: metadata tree -->
     <aside class="overflow-auto border-r bg-white">
-      <div class="p-3 text-sm" id="tree" #tree>Set connection and click on “Load metadata”.</div>
       <div class="p-3 border-t">
         <button id="btnLoadTree" #btnLoadTree class="w-full px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700">Load metadata</button>
       </div>
+      <div class="p-3 text-sm" id="treeMsg" #treeMsg>Set connection and click on “Load metadata”.</div>
+      <!-- root tree -->
+      <div id="tree-view" class="bg-white rounded-sm p-4 dark:bg-neutral-900" role="tree" aria-orientation="vertical" data-hs-tree-view="">
+        <div id="tree" #tree>
+        </div>
+      </div>
+      <!-- End root tree -->
     </aside>
 
     <!-- Main: SQL editor + results -->
@@ -74,7 +80,7 @@
           <select id="ddlType" #ddlType class="w-full border rounded p-2">
             <option value="table">Table</option>
             <option value="view">View</option>
-            <option value="routine">Procedure/Function</option>
+            <option value="procedure">Procedure/Function</option>
           </select>
         </div>
         <div>

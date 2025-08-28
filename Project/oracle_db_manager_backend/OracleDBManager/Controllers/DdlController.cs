@@ -14,23 +14,36 @@ public class DdlController : ControllerBase
     [HttpPost("create-table")]
     public async Task<IActionResult> CreateTable([FromBody] CreateTableRequest request)
     {
-        await _oracle.CreateTableAsync(request);
-        return Ok(new { Message = "Table created" });
+        var result = await _oracle.CreateTableAsync(request);
+        if (result is not null && result.status == true)
+        {
+            return Ok(result);
+        }
+        return BadRequest(new { Message = $"Error creating table: {result?.Message}" });
     }
 
     [HttpPost("create-view")]
     public async Task<IActionResult> CreateView([FromBody] CreateViewRequest req)
     {
-        await _oracle.CreateViewAsync(req);
-        return Ok(new { Message = "View created" });
+        var result = await _oracle.CreateViewAsync(req);
+
+        if (result is not null && result.status == true)
+        {
+            return Ok(result);
+        }
+        return BadRequest(new { Message = $"Error creating view: {result?.Message}" });
     }
 
 
     [HttpPost("create-procedure")]
     public async Task<IActionResult> CreateProcedure([FromBody] CreateProcedureRequest req)
     {
-        await _oracle.CreateProcedureAsync(req);
-        return Ok(new { message = "Procedure created." });
+        var result = await _oracle.CreateProcedureAsync(req);
+        if (result is not null && result.status == true)
+        {
+            return Ok(result);
+        }
+        return BadRequest(new { Message = $"Error creating procedure: {result?.Message}" });
     }
 }
 

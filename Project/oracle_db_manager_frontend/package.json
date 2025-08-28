@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@preline/accordion": "^3.2.3",
+    "@preline/tree-view": "^3.2.3"
+  }
+}

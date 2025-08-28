@@ -120,41 +120,67 @@ public class OracleService
         return tree;
     }
 
-    public async Task CreateTableAsync(CreateTableRequest req)
+    public async Task<Result> CreateTableAsync(CreateTableRequest req)
     {
-        using var conn = NewConn(req.ConnectionString);
-        await conn.OpenAsync();
-        using var cmd = conn.CreateCommand();
-
-        string cols = string.Join(", ", req.Columns.Select(c =>
+        try
         {
-            string type = c.DataType.ToUpperInvariant();
-            if (c.Length.HasValue && type.Contains("CHAR")) type += $"({c.Length.Value})";
-            string nullable = c.Nullable ? " " : "NOT NULL";
-            return $"{Quote(c.Name)} {type}{nullable}";
-        }));
+            using var conn = NewConn(req.ConnectionString);
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
 
-        var pkCols = req.Columns.Where(c => c.IsPrimaryKey).Select(c => Quote(c.Name)).ToList();
-        string pkSql = pkCols.Any() ? $", CONSTRAINT {Quote(req.PrimaryKeyName ?? $"{req.TableName}_PK")} PRIMARY KEY ({string.Join(", ", pkCols)})" : "";
-        cmd.CommandText = $"CREATE TABLE {Quote(req.TableName)} ({cols}{pkSql})";
-        await cmd.ExecuteNonQueryAsync();
+            string cols = string.Join(", ", req.Columns.Select(c =>
+            {
+                string type = c.DataType.ToUpperInvariant();
+                if (c.Length.HasValue && type.Contains("CHAR")) type += $"({c.Length.Value})";
+                string nullable = c.Nullable ? " " : " NOT NULL";
+                return $"{Quote(c.Name)} {type}{nullable}";
+            }));
+
+            var pkCols = req.Columns.Where(c => c.IsPrimaryKey).Select(c => Quote(c.Name)).ToList();
+            string pkSql = pkCols.Any() ? $", CONSTRAINT {Quote(req.PrimaryKeyName ?? $"{req.TableName}_PK")} PRIMARY KEY ({string.Join(", ", pkCols)})" : "";
+            cmd.CommandText = $"CREATE TABLE {req.TableName} ({cols}{pkSql})";
+            await cmd.ExecuteNonQueryAsync();
+            return new Result { status = true, Message = "Created Table successfully" };
+        }
+        catch (Exception ex)
+        {
+            return new Result { status = false, Message = $"Error creating table: {ex.Message}" };
+        }
     }
 
-    public async Task CreateViewAsync(CreateViewRequest req)
+    public async Task<Result> CreateViewAsync(CreateViewRequest req)
     {
-        using var conn = NewConn(req.ConnectionString);
-        await conn.OpenAsync();
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"CREATE OR REPLACE VIEW {Quote(req.Schema)}.{Quote(req.ViewName)} AS {req.SelectSql}";
+        try
+        {
+            using var conn = NewConn(req.ConnectionString);
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"CREATE VIEW {Quote(req.Schema)}.{Quote(req.ViewName)} AS {req.SelectSql}";
+            await cmd.ExecuteNonQueryAsync();
+            return new Result { status = true, Message = "Created View successfully" };
+        }
+        catch (Exception ex)
+        {
+            return new Result { status = false, Message = ex.Message };
+        }
     }
 
-    public async Task CreateProcedureAsync(CreateProcedureRequest req)
+    public async Task<Result> CreateProcedureAsync(CreateProcedureRequest req)
     {
-        using var conn = NewConn(req.ConnectionString);
-        await conn.OpenAsync();
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = req.Source;
-        await cmd.ExecuteNonQueryAsync();
+        try
+        {
+            using var conn = NewConn(req.ConnectionString);
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"CREATE OR REPLACE PROCEDURE {Quote(req.Schema)}.{Quote(req.ProcedureName)} AS {req.Source}";
+            await cmd.ExecuteNonQueryAsync();
+            return new Result { status = true, Message = "Created Procedure successfully" };
+        }
+        catch (Exception ex)
+        {
+            return new Result { status = false, Message = ex.Message };
+        }
+
     }
     private static string Quote(string ident) => $"\"{ident.Replace("\"", "\"\"")}\"";
 }
