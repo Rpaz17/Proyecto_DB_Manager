@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OracleDBManager")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+246da65b85191d9f22c6a48abf2ed2694df207a3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a869268de932c40b207b2a7c33e5e34b8d815009")]
 [assembly: System.Reflection.AssemblyProductAttribute("OracleDBManager")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OracleDBManager")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

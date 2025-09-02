@@ -87,134 +87,126 @@ async function loadTree(){
     qs('#treeMsg').textContent = 'Loading...';
     const res = await fetch(`${API_BASE}/api/MetaData/Tree`, {
         method: 'GET',
-        accept: '*/*',
-        headers: {'ConnectionString': `${connStr}`},
+        headers: { 'ConnectionString': `${connStr}` }
     });
     if (!res.ok){
         qs('#treeMsg').textContent = 'Error loading tree.';
         return;
     }
+
     const tree = await res.json();
-    qs('#tree').innerHTML = renderTreeHTML(tree);
+
+    // ⬇️ Wrapper con data-hs-tree-view + HTML del árbol
+    qs('#tree').innerHTML =
+      '<div class="bg-white rounded-sm p-4 dark:bg-neutral-900" role="tree" aria-orientation="vertical" data-hs-tree-view>' +
+        renderTreeHTML(tree) +
+      '</div>';
+
+    // ⬇️ Re-inicializar Preline para que funcionen los toggles
+    if (window.HSStaticMethods && window.HSStaticMethods.autoInit) {
+        window.HSStaticMethods.autoInit();
+    }
+
     qs('#treeMsg').textContent = 'Database Tree';
 }
+
 function renderTreeHTML(tree){
-    const owners = Object.keys(tree || {}).sort();
-    if(!owners.length) return '<div class="text-gray-500">No hay objetos visibles.</div>';
-    return owners.map(owner => {
-        const n = tree[owner] || {};
+  const owners = Object.keys(tree || {}).sort();
+  if (!owners.length) return '<div class="text-gray-500">No hay objetos visibles.</div>';
 
-        const list = (title, ord, arr) => `
-            <!-- 2nd Level Nested Accordion -->
-            <div class="hs-accordion" role="treeitem" aria-expanded="false" id="hs-cco-tree-sub-heading-${ord}" data-hs-tree-view-item='{
-            "value": "${title}",
-            "isDir": true
-            }'>
-                <!-- 2nd Level Accordion Heading -->
-                <div class="hs-accordion-heading py-0.5 rounded-md flex items-center gap-x-0.5 w-full hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700">
-                    <button class="hs-accordion-toggle size-6 flex justify-center items-center hover:bg-gray-100 rounded-md focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:hover:bg-neutral-700 dark:focus:bg-neutral-700" aria-expanded="false" aria-controls="hs-cco-tree-sub-collapse-${ord}">
-                        <svg class="size-4 text-gray-800 dark:text-neutral-200" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14"></path>
-                            <path class="hs-accordion-active:hidden block" d="M12 5v14"></path>
-                        </svg>
-                    </button>
+  let uid = 0;
+  const newId = (p) => `${p}-${++uid}`;
 
-                    <div class="grow hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700 px-1.5 rounded-md cursor-pointer">
-                        <div class="flex items-center gap-x-3">
-                            <svg class="shrink-0 size-4 text-gray-500 dark:text-neutral-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
-                            </svg>
-                            <div class="grow">
-                                <span class="text-sm text-gray-800 dark:text-neutral-200">
-                                    ${title}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- End 2nd Level Accordion Heading -->
+  const iconFolder = `
+    <svg class="shrink-0 size-4 text-gray-500 dark:text-neutral-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+      <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+    </svg>`;
 
-                <!-- 2nd Level Collapse -->
-                <div id="hs-cco-tree-sub-collapse-${ord}" class="hs-accordion-content w-full overflow-hidden transition-[height] duration-300" role="group" aria-labelledby="hs-cco-tree-sub-heading-${ord}">
-                    <div class="ms-3 ps-3 relative before:absolute before:top-0 before:start-0 before:w-0.5 before:-ms-px before:h-full before:bg-gray-100 dark:before:bg-neutral-700">
-                        
-                        ${(arr||[]).map(x=>`
-                        <!-- 2nd Level Item -->
-                        <div class="hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700 px-2 rounded-md cursor-pointer" role="treeitem" data-hs-tree-view-item='{
-                            "value": "${x}",
-                            "isDir": false
-                        }'>
-                            <div class="flex items-center gap-x-3">
-                                <svg class="shrink-0 size-4 text-gray-500 dark:text-neutral-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
-                                    <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
-                                    <circle cx="10" cy="12" r="2"></circle>
-                                    <path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"></path>
-                                </svg>
-                                <div class="grow">
-                                    <span class="text-sm text-gray-800 dark:text-neutral-200">
-                                    ${x}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- End 2nd Level Item -->
-                        `).join('')}
-                    </div>
-                </div>
-                <!-- End 2nd Level Collapse -->
+  const iconFile = `
+    <svg class="shrink-0 size-4 text-gray-500 dark:text-neutral-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+      <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+    </svg>`;
+
+  const toggleBtn = (ariaControls, expanded = false) => `
+    <button class="hs-accordion-toggle size-6 flex justify-center items-center hover:bg-gray-100 rounded-md focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+            aria-expanded="${expanded}" aria-controls="${ariaControls}">
+      <svg class="size-4 text-gray-800 dark:text-neutral-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path d="M5 12h14"></path>
+        <path class="hs-accordion-active:hidden block" d="M12 5v14"></path>
+      </svg>
+    </button>`;
+
+  const leaf = (text, value) => `
+    <div class="hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700 px-2 rounded-md cursor-pointer"
+         role="treeitem"
+         data-hs-tree-view-item='{"value":"${value}","isDir":false}'>
+      <div class="flex items-center gap-x-3">
+        ${iconFile}
+        <div class="grow">
+          <span class="text-sm text-gray-800 dark:text-neutral-200">${text}</span>
+        </div>
+      </div>
+    </div>`;
+
+  const section = (title, items=[]) => {
+    if (!items.length) return '';
+    const secId = newId('sec');
+    const collapseId = newId('collapse');
+    const children = items.map(x => leaf(x, x)).join('');
+    return `
+      <div class="hs-accordion" role="treeitem" aria-expanded="false" id="${secId}"
+           data-hs-tree-view-item='{"value":"${title}","isDir":true}'>
+        <div class="hs-accordion-heading py-0.5 rounded-md flex items-center gap-x-0.5 w-full hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700">
+          ${toggleBtn(collapseId, false)}
+          <div class="grow hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700 px-1.5 rounded-md cursor-pointer">
+            <div class="flex items-center gap-x-3">
+              ${iconFolder}
+              <div class="grow"><span class="text-sm text-gray-800 dark:text-neutral-200">${title}</span></div>
             </div>
-            <!-- End 2nd Level Nested Accordion -->`;
+          </div>
+        </div>
+        <div id="${collapseId}" class="hs-accordion-content hidden w-full overflow-hidden transition-[height] duration-300" role="group" aria-labelledby="${secId}">
+          <div class="ms-3 ps-3 relative before:absolute before:top-0 before:start-0 before:w-0.5 before:-ms-px before:h-full before:bg-gray-100 dark:before:bg-neutral-700">
+            ${children}
+          </div>
+        </div>
+      </div>`;
+  };
 
-        return `<!-- 1st Level Accordion -->
-                <div class="hs-accordion active" role="treeitem" aria-expanded="true" id="hs-cco-tree-heading-one" data-hs-tree-view-item='{
-                "value": "${owner}",
-                "isDir": true
-                }'>
-                    <!-- 1st Level Accordion Heading -->
-                    <div class="hs-accordion-heading py-0.5 rounded-md flex items-center gap-x-0.5 w-full hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700">
-                        <button class="hs-accordion-toggle size-6 flex justify-center items-center hover:bg-gray-100 rounded-md focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:hover:bg-neutral-700 dark:focus:bg-neutral-700" aria-expanded="true" aria-controls="hs-cco-tree-collapse-one">
-                            <svg class="size-4 text-gray-800 dark:text-neutral-200" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M5 12h14"></path>
-                                <path class="hs-accordion-active:hidden block" d="M12 5v14"></path>
-                            </svg>
-                        </button>
+  const ownerBlock = (owner, n) => {
+    const accId = newId('owner');
+    const colId = newId('collapse');
+    return `
+      <div class="hs-accordion" role="treeitem" aria-expanded="false" id="${accId}"
+           data-hs-tree-view-item='{"value":"${owner}","isDir":true}'>
+        <div class="hs-accordion-heading py-0.5 rounded-md flex items-center gap-x-0.5 w-full hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700">
+          ${toggleBtn(colId, false)}
+          <div class="grow hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700 px-1.5 rounded-md cursor-pointer">
+            <div class="flex items-center gap-x-3">
+              ${iconFolder}
+              <div class="grow"><span class="text-sm text-gray-800 dark:text-neutral-200">${owner}</span></div>
+            </div>
+          </div>
+        </div>
+        <div id="${colId}" class="hs-accordion-content hidden w-full overflow-hidden transition-[height] duration-300" role="group" aria-labelledby="${accId}">
+          <div class="ps-7 relative before:absolute before:top-0 before:start-3 before:w-0.5 before:-ms-px before:h-full before:bg-gray-100 dark:before:bg-neutral-700">
+            ${section('Tables', n.tables || [])}
+            ${section('Views', n.views || [])}
+            ${section('Procedures', n.procedures || [])}
+            ${section('Functions', n.functions || [])}
+          </div>
+        </div>
+      </div>`;
+  };
 
-                        <div class="grow hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700 px-1.5 rounded-md cursor-pointer">
-                            <div class="flex items-center gap-x-3">
-                                <svg class="shrink-0 size-4 text-gray-500 dark:text-neutral-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
-                                </svg>
-                                <div class="grow">
-                                    <span class="text-sm text-gray-800 dark:text-neutral-200">
-                                        ${owner}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- End 1st Level Accordion Heading -->
+  const ownersHtml = owners.map(owner => ownerBlock(owner, tree[owner] || {})).join('');
 
-                    <!-- 1st Level Collapse -->
-                    <div id="hs-cco-tree-collapse-one" class="hs-accordion-content w-full overflow-hidden transition-[height] duration-300" role="group" aria-labelledby="hs-cco-tree-heading-one">
-                        <!-- 2nd Level Accordion Group -->
-                        <div class="ps-7 relative before:absolute before:top-0 before:start-3 before:w-0.5 before:-ms-px before:h-full before:bg-gray-100 dark:before:bg-neutral-700">
-
-                            ${list('Tables','one', n.tables)}
-
-                            ${list('Views','two', n.views)}
-                            
-                            ${list('Procedures','three', n.procedures)}
-                            
-                            ${list('Functions','four', n.functions)}
-
-                        </div>
-                        <!-- 2nd Level Accordion Group -->
-                    </div>
-                    <!-- 1st Level Collapse -->
-                </div>
-                <!--End 1st Level Accordion -->`;
-    }).join('');
+  return `
+    <div id="tree-view" class="bg-white rounded-sm p-4 dark:bg-neutral-900"
+         role="tree" aria-orientation="vertical" data-hs-tree-view>
+      ${ownersHtml}
+    </div>`;
 }
 
 //SQL Runner

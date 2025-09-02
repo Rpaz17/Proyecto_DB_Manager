@@ -7,6 +7,12 @@
     <title>Oracle DB Manager</title>
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/preline/dist/preline.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      window.HSStaticMethods?.autoInit();
+    });
+  </script>
 </head>
 <body class="h-screen bg-gray-50 text-gray-900">
   <div class="h-full grid grid-cols-[320px_1fr] grid-rows-[56px_1fr]">
@@ -26,11 +32,15 @@
       </div>
       <div class="p-3 text-sm" id="treeMsg" #treeMsg>Set connection and click on “Load metadata”.</div>
       <!-- root tree -->
-      <div id="tree-view" class="bg-white rounded-sm p-4 dark:bg-neutral-900" role="tree" aria-orientation="vertical" data-hs-tree-view="">
-        <div id="tree" #tree>
-        </div>
-      </div>
-      <!-- End root tree -->
+      <div id="tree-root"
+          class="p-3"
+          role="tree"
+          aria-orientation="vertical"
+          data-hs-tree-view>
+        <!-- The function will inject the generated HTML here -->
+        <div id="tree"></div>
+       </div>
+       <!-- End root tree -->
     </aside>
 
     <!-- Main: SQL editor + results -->
