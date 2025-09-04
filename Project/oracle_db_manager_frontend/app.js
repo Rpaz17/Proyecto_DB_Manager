@@ -1,35 +1,120 @@
 const API_BASE = "http://localhost:5242";
 
 //Save Connection
+const LS_KEY = 'odbm.conn';
+const LS_SEL = 'odbm.activeId';
+
 let CONN = loadConnection();
 let connStr = '';
+let ACTIVE_ID = loadActiveId() || (CONN[0]?.id ?? null);
+
+//Multiconnections
+function uid(){
+    return 'c_' + Math.random().toString(36).slice(2, 10);
+}
 
 function loadConnection(){
-    try{ return JSON.parse(localStorage.getItem('odbm.conn') || '{}');  
-    } catch { return ''; }
+    try{ return JSON.parse(localStorage.getItem(LS_KEY) || '[]');  
+    } catch { return []; }
 }
 
-function saveConnection(c){
-    CONN = c;
-    localStorage.setItem('odbm.conn', JSON.stringify(c));
+function saveConnection(){
+    localStorage.setItem(LS_KEY, JSON.stringify(CONN));
+    renderConnPicker();
 }
 
-function getConnString(){
-    if(!CONN?.host) return '';
+function loadActiveId(){
+    try{
+        return localStorage.getItem(LS_SEL);
+    } catch {
+        return null;
+    }
+}
 
-    if(CONN?.user=='sys') {
-        return `User Id=${CONN.user};Password=${CONN.password};Data Source=//${CONN.host}:${CONN.port}/${CONN.service};DBA Privilege=SYSDBA;`;
+function setActive(id){
+    ACTIVE_ID = id || null;
+    localStorage.setItem(LS_SEL, ACTIVE_ID ?? '');
+    console.log('[setActive] ACTIVE_ID =', ACTIVE_ID, getActiveConn());
+    renderConnPicker();
+}
+
+function getActiveConn(){
+    return CONN.find(c => c.id === ACTIVE_ID) || null;
+}
+
+function renderConnPicker(){
+    const sel = document.getElementById('connPick');
+    if(!sel) return;
+
+    sel.innerHTML = '';
+    CONN.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name || `${c.user}@{c.host}/${c.service}`;
+        if(c.id === ACTIVE_ID) {
+            opt.selected = true;
+        }
+        sel.appendChild(opt);
+    });
+
+    if(CONN.length === 0){
+        const opt = document.createElement('option');
+        opt.value = 'No connections';
+        opt.disabled = true;
+        opt.selected = true;
+        sel.appendChild(opt);
+    }
+}
+
+function getConnString(c){
+    if(!c?.host) return '';
+
+    if(c?.user=='sys') {
+        return `User Id=${c.user};Password=${c.password};Data Source=//${c.host}:${c.port}/${c.service};DBA Privilege=SYSDBA;`;
     }else {
-        return `User Id=${CONN.user};Password=${CONN.password};Data Source=//${CONN.host}:${CONN.port}/${CONN.service};`;
+        return `User Id=${c.user};Password=${c.password};Data Source=//${c.host}:${c.port}/${c.service};`;
+    }
+}
+
+async function testConnection(){
+    try{
+        const res = await fetch(`${API_BASE}/api/Sql/execute`, {
+            method: 'POST',
+            headers: activeHeaders(),
+            body: JSON.stringify({ query: 'SELECT 1  AS OK FROM DUAL' })
+        });
+        if(!res.ok) throw new Error(await res.text());
+        return true;
+    }catch(err){
+        console.error(err);
+        return false;
+    }
+}
+
+async function onPickConnection(id){
+    setActive(id);
+    const ok = await testConnection();
+    if(ok){
+        msg('Connected to ' + (getActiveConn()?.name || ' connection'));
+    }else{
+        msg('Failed to connect. Check your connection settings and try again.');
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
 //Helpers
+if(!ACTIVE_ID && CONNS.length) setActive(CONNS[0].id);
+renderConnPicker();
 const qs = (s, el=document) => el.querySelector(s);
 const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
 const msg = (t) => {qs('#Message').textContent = t || '';};
 const on = (sel, ev, fn) => {const el = qs(sel); if(el) el.addEventListener(ev, fn);};
+const picker = document.getElementById('connPick');
+if(picker) {
+    picker.addEventListener('change', (e) => {
+        setActive(e.target.value);
+    });
+}
 function openModal(sel){
     const m=qs(sel);
     m.classList.remove('hidden');
@@ -59,21 +144,38 @@ qsa('[data-close]').forEach(btn =>
 on('#btnSaveConn', 'click', () => 
 {
     const conn = {
+        id : uid(),
         host: qs('#host').value.trim(),
         port: Number(qs('#port').value),
         service: qs('#service').value.trim(),
         user: qs('#user').value.trim(),
         password: qs('#password').value
     };
+
     if(!conn.host || !conn.port || !conn.service || !conn.user){
         msg('Please fill all the connection fields');
         return;
     }
+
+    conn.name = `${conn.user}@${conn.host}/${conn.service}`;
+    conn.connStr = getConnString(conn);
+
     qs('#Message').textContent = '';
-    saveConnection(conn);
+    CONN.push(conn);
+    saveConnection();
+    setActive(conn.id);
     closeModal('#connModal');
     msg('Connection saved successfully. Load the Trees or execute a query.');
 });
+
+function activeHeaders(){
+    const c = getActiveConn();
+    if(!c) throw new Error("No active connection selected");
+    return {
+        'Content Type' : 'application/json',
+        'ConnectionString' : c.connStr
+    };
+}
 
 //Tree
 on('#btnLoadTree', 'click', loadTree);
@@ -87,7 +189,7 @@ async function loadTree(){
     qs('#treeMsg').textContent = 'Loading...';
     const res = await fetch(`${API_BASE}/api/MetaData/Tree`, {
         method: 'GET',
-        headers: { 'ConnectionString': `${connStr}` }
+        headers: activeHeaders()
     });
     if (!res.ok){
         qs('#treeMsg').textContent = 'Error loading tree.';

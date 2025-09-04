@@ -105,10 +105,10 @@ public class OracleService
             cmd.CommandText = "SELECT GLOBAL_NAME FROM GLOBAL_NAME";
             var dbName = await cmd.ExecuteScalarAsync() as string ?? "DB";
 
-            node["tables"] = await FetchList(ConnectionString, "SELECT OBJECT_NAME FROM DBA_OBJECTS WHERE OBJECT_TYPE = 'TABLE' ORDER BY OBJECT_NAME");
-            node["views"] = await FetchList(ConnectionString, "SELECT OBJECT_NAME FROM DBA_OBJECTS WHERE OBJECT_TYPE = 'VIEW' ORDER BY OBJECT_NAME");
-            node["procedures"] = await FetchList(ConnectionString, "SELECT OBJECT_NAME FROM DBA_OBJECTS WHERE OBJECT_TYPE = 'PROCEDURE' ORDER BY OBJECT_NAME");
-            node["functions"] = await FetchList(ConnectionString, "SELECT OBJECT_NAME FROM DBA_OBJECTS WHERE OBJECT_TYPE = 'FUNCTION' ORDER BY OBJECT_NAME");
+            node["tables"] = await FetchList(ConnectionString, "SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME");
+            node["views"] = await FetchList(ConnectionString, "SELECT VIEW_NAME FROM USER_VIEWS ORDER BY VIEW_NAME");
+            node["procedures"] = await FetchList(ConnectionString, "SELECT PROCEDURE_NAME FROM USER_PROCEDURES ORDER BY PROCEDURE_NAME");
+            node["functions"] = await FetchList(ConnectionString, "SELECT OBJECT_NAME FROM USER_OBJECTS WHERE OBJECT_TYPE = 'FUNCTION' ORDER BY OBJECT_NAME");
             tree[dbName] = node;
 
         }

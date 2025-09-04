@@ -22,6 +22,7 @@ public class MetaDataController : ControllerBase
     [HttpGet("Tree")]
     public async Task<IActionResult> GetTree([FromHeader(Name = "ConnectionString")] string conn)
     {
+        var cs = Request.Headers["ConnectionString"].ToString();
         var tree = await _oracle.GetTreeAsync(conn);
         return Ok(tree);
     }
