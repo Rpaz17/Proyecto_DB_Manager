@@ -182,5 +182,28 @@ public class OracleService
         }
 
     }
+
+    public async Task<Result> GetTableDdlAsync(string ConnectionString, string tableName, string schema = null)
+    {
+        try
+        {
+            using var conn = NewConn(ConnectionString);
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+
+            schema ??= (await new OracleCommand("SELECT USER FROM dual", conn).ExecuteScalarAsync() as string) ?? string.Empty;
+
+            cmd.CommandText = "SELECT DBMS_METADATA.GET_DDL('TABLE', :tableName, :owner) FROM dual";
+            cmd.Parameters.Add(new OracleParameter("tableName", tableName));
+            cmd.Parameters.Add(new OracleParameter("owner", schema));
+
+            var ddl = (await cmd.ExecuteScalarAsync())?.ToString();
+            return new Result { status = ddl != null, Message = ddl ?? $"DDL not found for {schema}.{tableName}" };
+        }
+        catch
+        {
+            return new Result { status = false, Message = $"Error retrieving DDL for {schema}.{tableName}" };
+        }
+    }
     private static string Quote(string ident) => $"\"{ident.Replace("\"", "\"\"")}\"";
 }

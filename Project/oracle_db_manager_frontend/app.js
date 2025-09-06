@@ -1,12 +1,8 @@
 const API_BASE = "http://localhost:5242";
 
-//Save Connection
-const LS_KEY = 'odbm.conn';
-const LS_SEL = 'odbm.activeId';
 
 let CONN = loadConnection();
 let connStr = '';
-let ACTIVE_ID = loadActiveId() || (CONN[0]?.id ?? null);
 
 //Multiconnections
 function uid(){
@@ -14,107 +10,33 @@ function uid(){
 }
 
 function loadConnection(){
-    try{ return JSON.parse(localStorage.getItem(LS_KEY) || '[]');  
-    } catch { return []; }
+     try{ return JSON.parse(localStorage.getItem('odbm.conn') || '{}');  
+    } catch { return ''; }
 }
 
-function saveConnection(){
-    localStorage.setItem(LS_KEY, JSON.stringify(CONN));
-    renderConnPicker();
+function saveConnection(c){
+    CONN = c;
+    localStorage.setItem('odbm.conn', JSON.stringify(c));
 }
 
-function loadActiveId(){
-    try{
-        return localStorage.getItem(LS_SEL);
-    } catch {
-        return null;
-    }
-}
 
-function setActive(id){
-    ACTIVE_ID = id || null;
-    localStorage.setItem(LS_SEL, ACTIVE_ID ?? '');
-    console.log('[setActive] ACTIVE_ID =', ACTIVE_ID, getActiveConn());
-    renderConnPicker();
-}
+function getConnString(){
+    if(!CONN?.host) return '';
 
-function getActiveConn(){
-    return CONN.find(c => c.id === ACTIVE_ID) || null;
-}
-
-function renderConnPicker(){
-    const sel = document.getElementById('connPick');
-    if(!sel) return;
-
-    sel.innerHTML = '';
-    CONN.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.textContent = c.name || `${c.user}@{c.host}/${c.service}`;
-        if(c.id === ACTIVE_ID) {
-            opt.selected = true;
-        }
-        sel.appendChild(opt);
-    });
-
-    if(CONN.length === 0){
-        const opt = document.createElement('option');
-        opt.value = 'No connections';
-        opt.disabled = true;
-        opt.selected = true;
-        sel.appendChild(opt);
-    }
-}
-
-function getConnString(c){
-    if(!c?.host) return '';
-
-    if(c?.user=='sys') {
-        return `User Id=${c.user};Password=${c.password};Data Source=//${c.host}:${c.port}/${c.service};DBA Privilege=SYSDBA;`;
+    if(CONN?.user=='sys') {
+        return `User Id=${CONN.user};Password=${CONN.password};Data Source=//${CONN.host}:${CONN.port}/${CONN.service};DBA Privilege=SYSDBA;`;
     }else {
-        return `User Id=${c.user};Password=${c.password};Data Source=//${c.host}:${c.port}/${c.service};`;
-    }
-}
-
-async function testConnection(){
-    try{
-        const res = await fetch(`${API_BASE}/api/Sql/execute`, {
-            method: 'POST',
-            headers: activeHeaders(),
-            body: JSON.stringify({ query: 'SELECT 1  AS OK FROM DUAL' })
-        });
-        if(!res.ok) throw new Error(await res.text());
-        return true;
-    }catch(err){
-        console.error(err);
-        return false;
-    }
-}
-
-async function onPickConnection(id){
-    setActive(id);
-    const ok = await testConnection();
-    if(ok){
-        msg('Connected to ' + (getActiveConn()?.name || ' connection'));
-    }else{
-        msg('Failed to connect. Check your connection settings and try again.');
+       return `User Id=${CONN.user};Password=${CONN.password};Data Source=//${CONN.host}:${CONN.port}/${CONN.service};`;
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
 //Helpers
-if(!ACTIVE_ID && CONNS.length) setActive(CONNS[0].id);
-renderConnPicker();
 const qs = (s, el=document) => el.querySelector(s);
 const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
 const msg = (t) => {qs('#Message').textContent = t || '';};
 const on = (sel, ev, fn) => {const el = qs(sel); if(el) el.addEventListener(ev, fn);};
 const picker = document.getElementById('connPick');
-if(picker) {
-    picker.addEventListener('change', (e) => {
-        setActive(e.target.value);
-    });
-}
 function openModal(sel){
     const m=qs(sel);
     m.classList.remove('hidden');
@@ -144,7 +66,6 @@ qsa('[data-close]').forEach(btn =>
 on('#btnSaveConn', 'click', () => 
 {
     const conn = {
-        id : uid(),
         host: qs('#host').value.trim(),
         port: Number(qs('#port').value),
         service: qs('#service').value.trim(),
@@ -157,25 +78,12 @@ on('#btnSaveConn', 'click', () =>
         return;
     }
 
-    conn.name = `${conn.user}@${conn.host}/${conn.service}`;
-    conn.connStr = getConnString(conn);
-
     qs('#Message').textContent = '';
-    CONN.push(conn);
-    saveConnection();
-    setActive(conn.id);
+    saveConnection(conn);
     closeModal('#connModal');
     msg('Connection saved successfully. Load the Trees or execute a query.');
 });
 
-function activeHeaders(){
-    const c = getActiveConn();
-    if(!c) throw new Error("No active connection selected");
-    return {
-        'Content Type' : 'application/json',
-        'ConnectionString' : c.connStr
-    };
-}
 
 //Tree
 on('#btnLoadTree', 'click', loadTree);
@@ -189,7 +97,7 @@ async function loadTree(){
     qs('#treeMsg').textContent = 'Loading...';
     const res = await fetch(`${API_BASE}/api/MetaData/Tree`, {
         method: 'GET',
-        headers: activeHeaders()
+        headers: { 'ConnectionString': `${connStr}` }
     });
     if (!res.ok){
         qs('#treeMsg').textContent = 'Error loading tree.';
@@ -212,13 +120,26 @@ async function loadTree(){
     qs('#treeMsg').textContent = 'Database Tree';
 }
 
+async function loadTableDdl(tableName, schema){
+    if(!CONN?.connectionString){
+        alert('No connection set');
+        return;
+    }
+    const res = await fetch(`${API_BASE}/api/MetaData/table-ddl/${tableName}?schema=${schema}`, {
+        method: 'GET',
+        headers: { 'ConnectionString': `${CONN.connectionString}` }
+    });
+
+    const data = await res.json();
+
+    document.getElementById("resultWrap").innerHTML = 
+    `<pre class="p-3 text-sm whitespace-pre-wrap">${data.ddl || data.Ddl}</pre>`;
+}
+window.loadTableDdl = loadTableDdl;
+
 function renderTreeHTML(tree){
-  const owners = Object.keys(tree || {}).sort();
+    const owners = Object.keys(tree || {}).sort();
   if (!owners.length) return '<div class="text-gray-500">No hay objetos visibles.</div>';
-
-  let uid = 0;
-  const newId = (p) => `${p}-${++uid}`;
-
   const iconFolder = `
     <svg class="shrink-0 size-4 text-gray-500 dark:text-neutral-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
       <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
