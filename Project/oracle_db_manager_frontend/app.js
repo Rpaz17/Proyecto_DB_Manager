@@ -106,13 +106,25 @@ async function loadTree(){
 
     const tree = await res.json();
 
-    // ⬇️ Wrapper con data-hs-tree-view + HTML del árbol
+
     qs('#tree').innerHTML =
       '<div class="bg-white rounded-sm p-4 dark:bg-neutral-900" role="tree" aria-orientation="vertical" data-hs-tree-view>' +
         renderTreeHTML(tree) +
       '</div>';
 
-    // ⬇️ Re-inicializar Preline para que funcionen los toggles
+    const TreeEl = qs('#tree');
+    TreeEl.addEventListener('click', (e) => {
+        const leaf = e.target.closest('[data-hs-tree-view-item][data-owner]');
+        if(!leaf) return;
+        const kind = leaf.dataset.kind;
+        const name = leaf.dataset.name;
+        const owner = leaf.dataset.owner;
+
+        if(kind === 'Tables'){
+            loadTableDdl(name, owner);
+        }
+    });
+
     if (window.HSStaticMethods && window.HSStaticMethods.autoInit) {
         window.HSStaticMethods.autoInit();
     }
@@ -125,7 +137,7 @@ async function loadTableDdl(tableName, schema){
         alert('No connection set');
         return;
     }
-    const res = await fetch(`${API_BASE}/api/MetaData/table-ddl/${tableName}?schema=${schema}`, {
+    const res = await fetch(`${API_BASE}/api/MetaData/table-ddl/${encodeURComponent(tableName)}?schema=${encodeURIComponent(schema)}`, {
         method: 'GET',
         headers: { 'ConnectionString': `${CONN.connectionString}` }
     });
@@ -137,6 +149,11 @@ async function loadTableDdl(tableName, schema){
 }
 window.loadTableDdl = loadTableDdl;
 
+let uidCounter = 0;
+function newId(prefix='id'){
+    uidCounter++;
+    return `${prefix}-${uidCounter}`;
+}
 function renderTreeHTML(tree){
     const owners = Object.keys(tree || {}).sort();
   if (!owners.length) return '<div class="text-gray-500">No hay objetos visibles.</div>';
@@ -160,10 +177,11 @@ function renderTreeHTML(tree){
       </svg>
     </button>`;
 
-  const leaf = (text, value) => `
+  const leaf = (text, value, owner, kind) => `
     <div class="hs-tree-view-selected:bg-gray-100 dark:hs-tree-view-selected:bg-neutral-700 px-2 rounded-md cursor-pointer"
          role="treeitem"
-         data-hs-tree-view-item='{"value":"${value}","isDir":false}'>
+         data-hs-tree-view-item='{"value":"${value}","isDir":false}'
+         data-owner="${owner}" data-kind="${kind}" data-name="${text}">
       <div class="flex items-center gap-x-3">
         ${iconFile}
         <div class="grow">
@@ -172,11 +190,11 @@ function renderTreeHTML(tree){
       </div>
     </div>`;
 
-  const section = (title, items=[]) => {
+  const section = (title, items=[], owner) => {
     if (!items.length) return '';
     const secId = newId('sec');
     const collapseId = newId('collapse');
-    const children = items.map(x => leaf(x, x)).join('');
+    const children = items.map(x => leaf(x, x, owner, title)).join('');
     return `
       <div class="hs-accordion" role="treeitem" aria-expanded="false" id="${secId}"
            data-hs-tree-view-item='{"value":"${title}","isDir":true}'>
