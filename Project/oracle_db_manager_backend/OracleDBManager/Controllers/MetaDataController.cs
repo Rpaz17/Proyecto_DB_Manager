@@ -25,12 +25,4 @@ public class MetaDataController : ControllerBase
         var tree = await _oracle.GetTreeAsync(conn);
         return Ok(tree);
     }
-
-    [HttpGet("table-ddl/{tableName}")]
-    public async Task<IActionResult> GetTableDdl(
-        [FromHeader(Name = "ConnectionString")] string conn, string tableName, [FromQuery] string? schema = null)
-    {
-        var ddl = await _oracle.GetTableDdlAsync(conn, tableName, schema);
-        return Ok(new { Table = tableName, Schema = schema, DDL = ddl });
-    }
 }
