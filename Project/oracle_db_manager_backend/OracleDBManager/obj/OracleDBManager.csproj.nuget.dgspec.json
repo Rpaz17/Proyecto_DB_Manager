@@ -59,9 +59,17 @@
               "target": "Package",
               "version": "[9.0.8, )"
             },
+            "Npgsql": {
+              "target": "Package",
+              "version": "[7.0.6, )"
+            },
             "Oracle.ManagedDataAccess.Core": {
               "target": "Package",
               "version": "[23.9.1, )"
+            },
+            "Polly": {
+              "target": "Package",
+              "version": "[7.2.3, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
