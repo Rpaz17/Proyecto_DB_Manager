@@ -33,15 +33,35 @@ public class SyncService
             }
 
             //Copy data
+            progress?.Report(new ProgressSync { Stage = "Copying Data", Percent = 40 });
+            int done = 0;
+            foreach (var t in tables)
+            {
+                var cols = t.Columns.Select(c => c.ColumnName).ToArray();
+                var rows = StreamTableRowsAsync(req.OracleConnection, t.Owner, t.TableName, cols);
+                await _pg.BulkCopyAsync(req.PostgresConnection, t.PgQualifiedName, cols, rows);
+
+                result.TablesCopied.Add($"{t.Owner}.{t.TableName}");
+                done++;
+                progress?.Report(new ProgressSync { Stage = "Copying Data", CurrentTable = $"{t.Owner}.{t.TableName}", Percent = 40 + (int)(50.0 * done / tables.Count) });
+            }
 
             //Analyze tables
+            progress?.Report(new ProgressSync { Stage = "Finalizing", Percent = 95 });
+            foreach (var byOwner in tables.Select(t => t.Owner.ToLower()).Distinct())
+            {
+                await _pg.ExecSync(req.PostgresConnection, $"ANALYZE \"{byOwner.ToLower()}\";");
+            }
 
             //Validate row counts
-
+            progress?.Report(new ProgressSync { Stage = "Done", Percent = 100 });
+            result.Success = true;
         }
         catch (Exception ex)
         {
-            result.Errors.Add(ex.Message);
+            result.Errors.Add(ex.ToString());
+            result.Success = false;
+            progress?.Report(new ProgressSync { Stage = "Error", Percent = 100, Message = ex.Message });
         }
         return result;
     }
@@ -166,5 +186,28 @@ public class SyncService
         }
         sb.AppendLine(");");
         return sb.ToString();
+    }
+
+    private async IAsyncEnumerable<object?[]> StreamTableRowsAsync(string cs, string owner, string table, string[] columns)
+    {
+        await using var conn = new OracleConnection(cs);
+        await conn.OpenAsync();
+
+        var colList = string.Join(",", columns.Select(c => $"\"{c}\""));
+        await using var cmd = conn.CreateCommand();
+        var sql = $"SELECT {colList} FROM \"{owner}\".\"{table}\"";
+        cmd.CommandText = sql;
+
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        var fieldCount = reader.FieldCount;
+        while (await reader.ReadAsync())
+        {
+            var rows = new object?[fieldCount];
+            for (int i = 0; i < fieldCount; i++)
+            {
+                rows[i] = await reader.IsDBNullAsync(i) ? null : reader.GetValue(i);
+            }
+            yield return rows;
+        }
     }
 }

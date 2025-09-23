@@ -52,3 +52,5 @@ C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_backend\OracleDBManager\ob
 C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_backend\OracleDBManager\obj\Debug\net8.0\OracleDBManager.pdb
 C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_backend\OracleDBManager\obj\Debug\net8.0\OracleDBManager.genruntimeconfig.cache
 C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_backend\OracleDBManager\obj\Debug\net8.0\ref\OracleDBManager.dll
+C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_backend\OracleDBManager\bin\Debug\net8.0\Npgsql.dll
+C:\code\Proyecto_DB_Manager\Project\oracle_db_manager_backend\OracleDBManager\bin\Debug\net8.0\Polly.dll

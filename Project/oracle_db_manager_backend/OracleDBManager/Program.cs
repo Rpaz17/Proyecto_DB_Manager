@@ -19,6 +19,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<OracleService>();
+builder.Services.AddScoped<PostgresService>();
+builder.Services.AddScoped<SyncService>();
 
 var app = builder.Build();
 
