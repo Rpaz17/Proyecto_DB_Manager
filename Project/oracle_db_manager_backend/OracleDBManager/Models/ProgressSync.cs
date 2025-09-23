@@ -1,6 +1,6 @@
 namespace OracleDBManager.Models;
 
-public class PostgresSync
+public class ProgressSync
 {
     public string Stage { get; set; } = "";
     public string? CurrentTable { get; set; }
