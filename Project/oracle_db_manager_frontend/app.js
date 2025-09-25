@@ -2,6 +2,7 @@ const API_BASE = "http://localhost:5242";
 
 let CONN = loadConnection();
 let connStr = '';
+const PG_KEY = 'pg.conn';
 
 // Multiconnections helper present originally (not used elsewhere)
 function uid(){
@@ -16,6 +17,19 @@ function loadConnection(){
 function saveConnection(c){
   CONN = c;
   localStorage.setItem('odbm.conn', JSON.stringify(c));
+}
+
+function savePgConn(cs){
+  if(!cs || !cs.trim()) return;
+  localStorage.setItem(PG_KEY, cs.trim());
+}
+
+function loadPgConn(){
+  return localStorage.getItem('pg.conn') || '';
+}
+
+function clearPgConn(){
+  localStorage.removeItem('pg.conn');
 }
 
 function getConnString(){
@@ -87,6 +101,49 @@ on('#btnSaveConn', 'click', () =>
   msg('Connection saved successfully. Load the Trees or execute a query.');
 });
 
+on('#btnPgTarget', 'click', () => {
+  const existing = loadPgConn();
+  const example = 'Host=localhost;Port=5432;Database=mydb;User Id=myuser;Password=mypassword;';
+  const cs = prompt('Enter PostgreSQL connection string:', existing || example);
+  if(cs){ savePgConn(cs); msg('PostgreSQL connection string saved.');}
+});
+
+on('#ClearPg', 'click', () => {
+  if(confirm('Are you sure to clear the PostgreSQL connection string?')){
+    clearPgConn();
+    msg('PostgreSQL connection string cleared.');
+  }
+});
+
+on('#btnSyncCurrent', 'click', async () => {
+  const oracleConn = getConnString().trim().replace(/\u200B|\u200E|\u200F|\uFEFF/g,'');
+  if(!oracleConn){
+    msg('Please connect to Oracle first.');
+    return;
+  }
+
+  const pgConn = loadPgConn();
+  const headers = {'ConnectionString': oracleConn};
+  if(pgConn) headers['PgConnectionString'] = pgConn;
+
+  const res = fetch(`${API_BASE}/api/Sync/start-current`, {
+    method: 'POST',
+    headers: {
+      'ConnectionString': oracleConn,
+      'PgConnectionString': (localStorage.getItem('pg.conn') || '').trim()
+    }
+  });
+
+  const text = await res.text();
+  if (!res.ok) { msg(`Sync error ${res.status}: ${text}`); console.error(text); return; }
+  let data = {};
+  try {data = text ? JSON.parse(text) : {};} catch (err){
+    console.warn('Error parsing SYNC response', err, text);
+  }
+
+  console.log('SYNC RESULT', data);
+  alert(data?.result?.success ? 'Sync Completed! Check pgAdmin or PG instance.' : 'Sync finished with errors. Check console.');
+});
 
 // Tree
 on('#btnLoadTree', 'click', loadTree);

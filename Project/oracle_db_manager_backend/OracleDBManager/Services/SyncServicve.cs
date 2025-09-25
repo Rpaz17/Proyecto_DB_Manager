@@ -33,7 +33,7 @@ public class SyncService
             }
 
             //Copy data
-            progress?.Report(new ProgressSync { Stage = "Copying Data", Percent = 40 });
+            progress?.Report(new ProgressSync { Stage = "Copying Data", Percent = 56 });
             int done = 0;
             foreach (var t in tables)
             {
@@ -44,13 +44,6 @@ public class SyncService
                 result.TablesCopied.Add($"{t.Owner}.{t.TableName}");
                 done++;
                 progress?.Report(new ProgressSync { Stage = "Copying Data", CurrentTable = $"{t.Owner}.{t.TableName}", Percent = 40 + (int)(50.0 * done / tables.Count) });
-            }
-
-            //Analyze tables
-            progress?.Report(new ProgressSync { Stage = "Finalizing", Percent = 95 });
-            foreach (var byOwner in tables.Select(t => t.Owner.ToLower()).Distinct())
-            {
-                await _pg.ExecSync(req.PostgresConnection, $"ANALYZE \"{byOwner.ToLower()}\";");
             }
 
             //Validate row counts
@@ -69,21 +62,37 @@ public class SyncService
     private async Task<List<TableDef>> GetOracleTablesAsync(string cs, string owner)
     {
         var list = new List<TableDef>();
-        await using var conn = new OracleConnection(cs);
-        await conn.OpenAsync();
+        await using var conn = new Oracle.ManagedDataAccess.Client.OracleConnection(cs);
+        try { await conn.OpenAsync(); }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Could not open Oracle connection. Check ConnectionString header (user/pass/host/port/service).", ex);
+        }
 
-        string schema = owner ?? (await GetCurrentUser(conn));
+        await using (var ping = conn.CreateCommand())
+        {
+            ping.CommandText = "SELECT 1 FROM DUAL";
+            await ping.ExecuteScalarAsync();
+        }
+
+        string currentUser;
+        await using (var who = conn.CreateCommand())
+        {
+            who.CommandText = "SELECT USER FROM DUAL";
+            currentUser = (String)(await who.ExecuteScalarAsync() ?? "USER");
+        }
+
+        var schema = currentUser;
+        var useAll = false;
 
         //Tables
         var tables = new List<(string Owner, string TableName)>();
-        await using (var cmd = new OracleCommand())
+
+        await using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandText = @"SELECT OWNER, TABLE_NAME 
-                                FROM ALL_TABLES 
-                                WHERE OWNER = :owner 
-                                ORDER BY TABLE_NAME";
-            cmd.Parameters.Add(new OracleParameter("owner", schema.ToUpperInvariant()));
-            await using var reader = await cmd.ExecuteReaderAsync();
+            cmd.CommandText = @"SELECT USER AS OWNER, TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME";
+
+            await using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess);
             while (await reader.ReadAsync())
             {
                 tables.Add((reader.GetString(0), reader.GetString(1)));
@@ -93,27 +102,25 @@ public class SyncService
         //Columns
         foreach (var (own, tabN) in tables)
         {
-            var td = new TableDef { Owner = own, TableName = tabN, Columns = new List<ColumnDef>() };
-            await using var cmd = new OracleCommand();
-            cmd.Connection = conn;
-            cmd.CommandText = @"SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH 
-                                FROM ALL_TAB_COLUMNS 
-                                WHERE OWNER = :owner AND TABLE_NAME = :tableName 
+            var td = new TableDef { Owner = own, TableName = tabN, Columns = new() };
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE
+                                FROM USER_TAB_COLUMNS
+                                WHERE TABLE_NAME = :tableName 
                                 ORDER BY COLUMN_ID";
-            cmd.Parameters.Add(new OracleParameter("owner", own.ToUpperInvariant()));
-            cmd.Parameters.Add(new OracleParameter("tableName", tabN.ToUpperInvariant()));
+            cmd.Parameters.Add(new OracleParameter("tableName", tabN));
 
-            await using var reader = await cmd.ExecuteReaderAsync();
+            await using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess);
             while (await reader.ReadAsync())
             {
                 var Name = reader.GetString(0);
                 var DataType = ComposeOracleType(
-                    reader.GetString(1),
-                    reader.IsDBNull(2) ? null : reader.GetValue(2),
-                    reader.IsDBNull(3) ? null : reader.GetValue(3),
-                    reader.IsDBNull(4) ? null : reader.GetValue(4)
+                    reader.GetString(1), //DataType
+                    reader.IsDBNull(2) ? null : reader.GetValue(2), //DataLength
+                    reader.IsDBNull(3) ? null : reader.GetValue(3), //DataPrecision
+                    reader.IsDBNull(4) ? null : reader.GetValue(4)  //DataScale
                 );
-                var nullable = reader.GetString(5) == "Y";
+                var nullable = reader.GetString(5) == "Y"; //Nullable
                 td.Columns.Add(new ColumnDef
                 {
                     ColumnName = Name,
