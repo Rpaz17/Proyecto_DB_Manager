@@ -4,7 +4,7 @@ let CONN = loadConnection();
 let connStr = '';
 const PG_KEY = 'pg.conn';
 
-// Multiconnections helper present originally (not used elsewhere)
+// Multiconnections not used in this version
 function uid(){
   return 'c_' + Math.random().toString(36).slice(2, 10);
 }
@@ -42,7 +42,6 @@ function getConnString(){
   }
 }
 
-// Minimal fix: provide newId used by renderTreeHTML
 let __id = 0;
 function newId(prefix='id'){ __id += 1; return `${prefix}-${__id}`; }
 
@@ -263,7 +262,6 @@ function renderTreeHTML(tree){
       </div>`;
   };
 
-  // Minimal fix: define owners locally from tree
   const owners = Object.keys(tree || {});
   const ownersHtml = owners.map(owner => ownerBlock(owner, tree[owner] || {})).join('');
 
@@ -319,7 +317,7 @@ on('#btnDDL', 'click', () => {
   openModal('#ddlModal');
 });
 
-// Here we do the alternation of sections depending of the type of DDL
+// Do the alternation of sections depending of the type of DDL
 on('#ddlType', 'change', refreshDDLSections);
 function refreshDDLSections(){
   const type = qs('#ddlType').value;
@@ -456,6 +454,36 @@ async function createView(schema, view, selectSql){
   closeModal('#ddlModal');
   msg(res.ok ? 'View created successfully' : 'Error creating view');
 }
+
+async function renderBottomClassDiagram(){
+  if(!CONN?.host){
+    if (typeof msg === 'function') msg('Please establish a connection first.');
+    else alert('Please establish a connection first.');
+    return;
+  }
+  const connStr = getConnString();
+  const element = document.getElementById('erdBottom');
+  if (element) element.innerHTML = '<div class="text-sm text-gray-600">Generating diagram…</div>';
+
+  try{
+    const res = await fetch(`${API_BASE}/api/MetaData/class-graph`, {
+      method: 'GET',
+      headers: { 'ConnectionString': connStr }
+    });
+    if(!res.ok) throw new Error(`Failed to fetch diagram (${res.status})`);
+
+    const data = await res.json();
+    const code = data?.mermaid || 'classDiagram';
+
+    const { svg } = await window._mermaid.render(`erdClass_${Date.now()}`, code);
+    if (element) element.innerHTML = svg;
+  }catch(err){
+    if (element) element.innerHTML = `<pre class="text-red-700 whitespace-pre-wrap">${String(err)}</pre>`;
+  }
+}
+
+document.getElementById('btnRefreshERD')?.addEventListener('click', renderBottomClassDiagram);
+
 
 async function createProcedure(schema, procedure, source)
 {

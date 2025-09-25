@@ -1,3 +1,4 @@
+
 using OracleDBManager.Models;
 using Oracle.ManagedDataAccess.Client;
 using System.Data;
@@ -46,6 +47,13 @@ public class SyncService
                 progress?.Report(new ProgressSync { Stage = "Copying Data", CurrentTable = $"{t.Owner}.{t.TableName}", Percent = 40 + (int)(50.0 * done / tables.Count) });
             }
 
+
+
+
+
+
+
+
             //Validate row counts
             progress?.Report(new ProgressSync { Stage = "Done", Percent = 100 });
             result.Success = true;
@@ -93,6 +101,9 @@ public class SyncService
             cmd.CommandText = @"SELECT USER AS OWNER, TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME";
 
             await using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess);
+
+
+
             while (await reader.ReadAsync())
             {
                 tables.Add((reader.GetString(0), reader.GetString(1)));
@@ -107,8 +118,10 @@ public class SyncService
             cmd.CommandText = @"SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE
                                 FROM USER_TAB_COLUMNS
                                 WHERE TABLE_NAME = :tableName 
+
                                 ORDER BY COLUMN_ID";
             cmd.Parameters.Add(new OracleParameter("tableName", tabN));
+
 
             await using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess);
             while (await reader.ReadAsync())

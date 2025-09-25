@@ -2,6 +2,7 @@ using System.Data;
 using Oracle.ManagedDataAccess.Client;
 using System.Data.Common;
 using OracleDBManager.Models;
+using System.Text;
 
 namespace OracleDBManager.Services;
 
@@ -182,5 +183,121 @@ public class OracleService
         }
 
     }
+    public async Task<string> GetMermaidClassDiagramAsync(string connectionString)
+    {
+        using var conn = NewConn(connectionString);
+        await conn.OpenAsync();
+
+        // Gather tables
+        var tables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var tcmd = conn.CreateCommand())
+        {
+            tcmd.CommandText = @"SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME";
+            using var r = await tcmd.ExecuteReaderAsync();
+            while (await r.ReadAsync()) tables.Add(r.GetString(0));
+        }
+
+        // Gather columns
+        var cols = new Dictionary<string, List<(string name, string type)>>(StringComparer.OrdinalIgnoreCase);
+        using (var ccmd = conn.CreateCommand())
+        {
+            ccmd.CommandText = @"
+          SELECT TABLE_NAME,
+                 COLUMN_NAME,
+                 DATA_TYPE,
+                 DATA_LENGTH,
+                 DATA_PRECISION,
+                 DATA_SCALE
+          FROM USER_TAB_COLUMNS
+          ORDER BY TABLE_NAME, COLUMN_ID";
+            using var r = await ccmd.ExecuteReaderAsync();
+            while (await r.ReadAsync())
+            {
+                string t = r.GetString(0);
+                string c = r.GetString(1);
+                string dt = r.GetString(2);
+
+                // Pretty type string
+                string typeLabel = dt;
+                bool hasLength = !r.IsDBNull(3) && r.GetInt32(3) > 0;
+                bool hasPrec = !r.IsDBNull(4);
+                bool hasScale = !r.IsDBNull(5);
+
+                if (dt.Contains("CHAR", StringComparison.OrdinalIgnoreCase) && hasLength)
+                {
+                    typeLabel = $"{dt}({r.GetInt32(3)})";
+                }
+                else if ((dt.Equals("NUMBER", StringComparison.OrdinalIgnoreCase) || dt.Equals("DECIMAL", StringComparison.OrdinalIgnoreCase)) && hasPrec)
+                {
+                    int p = Convert.ToInt32(r.GetDecimal(4));
+                    if (hasScale && !r.IsDBNull(5))
+                    {
+                        int s = Convert.ToInt32(r.GetDecimal(5));
+                        typeLabel = $"{dt}({p},{s})";
+                    }
+                    else
+                    {
+                        typeLabel = $"{dt}({p})";
+                    }
+                }
+
+                if (!cols.TryGetValue(t, out var list)) cols[t] = list = new();
+                list.Add((c, typeLabel));
+            }
+        }
+
+        // Gather FK relations
+        var rels = new HashSet<(string pkTable, string fkTable, string pkCol, string fkCol)>();
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+            SELECT
+                pk.table_name   AS pk_table,
+                fk.table_name   AS fk_table,
+                pkc.column_name AS pk_col,
+                fkc.column_name AS fk_col,
+                fkc.position    AS pos
+            FROM user_constraints fk
+            JOIN user_cons_columns fkc
+              ON fk.constraint_name = fkc.constraint_name
+            JOIN user_constraints pk
+              ON fk.r_constraint_name = pk.constraint_name
+            JOIN user_cons_columns pkc
+              ON pk.constraint_name = pkc.constraint_name
+             AND pkc.position = fkc.position
+           WHERE fk.constraint_type = 'R'
+           ORDER BY fk.table_name, fkc.position";
+            using var r = await cmd.ExecuteReaderAsync();
+            while (await r.ReadAsync())
+            {
+                rels.Add((r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3)));
+                tables.Add(r.GetString(0));
+                tables.Add(r.GetString(1));
+            }
+        }
+
+        // Mermaid ClassDiagram syntax
+        var sb = new StringBuilder();
+        sb.AppendLine("classDiagram");
+
+        // Classes with attributes: "TYPE NAME"
+        foreach (var t in tables.OrderBy(x => x))
+        {
+            sb.AppendLine($"class {t} {{");
+            if (cols.TryGetValue(t, out var list))
+            {
+                foreach (var (name, type) in list)
+                    sb.AppendLine($"  {type} {name}");
+            }
+            sb.AppendLine("}");
+        }
+
+        // Relations
+        foreach (var (pkT, fkT, pkC, fkC) in rels.OrderBy(x => x.fkTable).ThenBy(x => x.pkTable))
+            sb.AppendLine($"{fkT} --> {pkT} : {fkC}→{pkC}");
+
+        return sb.ToString();
+    }
+
     private static string Quote(string ident) => $"\"{ident.Replace("\"", "\"\"")}\"";
 }

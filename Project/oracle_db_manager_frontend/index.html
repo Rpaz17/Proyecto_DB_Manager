@@ -55,6 +55,17 @@
       </div>
       <div id="Message" #Message class="text-sm text-gray-600"></div>
       <div id="resultWrap" #resultWrap class="overflow-auto border rounded"></div>
+      <hr class="my-2">
+      <!-- Bottom diagram panel -->
+      <div class="mt-2">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold">Relational Model</h2>
+          <button id="btnRefreshERD" class="px-3 py-1 rounded border hover:bg-gray-50">Refresh Diagram</button>
+        </div>
+        <div id="erdBottom" class="mt-2 h-96 overflow-auto border rounded bg-white p-3">
+          <!-- Mermaid SVG will render here -->
+        </div>
+      </div>
     </main>
   </div>
 
@@ -142,6 +153,15 @@
     </div>
   </div>
     <script src="app.js"></script>
+    <!-- Mermaid (ESM) -->
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+      window._mermaid = mermaid;
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "loose" 
+      });
+    </script>
 </body>
 
 </html>

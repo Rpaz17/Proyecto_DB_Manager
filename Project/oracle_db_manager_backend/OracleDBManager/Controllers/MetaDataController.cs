@@ -25,4 +25,12 @@ public class MetaDataController : ControllerBase
         var tree = await _oracle.GetTreeAsync(conn);
         return Ok(tree);
     }
+
+    [HttpGet("class-graph")]
+    public async Task<IActionResult> GetClassGraph([FromHeader(Name = "ConnectionString")] string conn)
+    {
+        var mermaid = await _oracle.GetMermaidClassDiagramAsync(conn);
+        return Ok(new { mermaid });
+    }
+
 }
