@@ -9,7 +9,7 @@ OracleDBManager es un gestor de bases de datos ligero que se conecta a Oracle, p
 
 ---
 
-## 📦 Instalación
+## Instalación
 
 ### Requisitos
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
